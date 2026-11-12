@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090d1b">
+<title>My Game Zone — Ludo Mini</title>
+<style>
+:root{--bg:#090d1b;--panel:#121a2e;--blue:#39c6ff;--purple:#9b70ff;--text:#f4f7ff;--muted:#aab6d0}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#1c2850 0,#090d1b 60%);color:var(--text);font-family:system-ui,sans-serif}
+header{text-align:center;padding:20px 12px;background:#0b1122;border-bottom:1px solid #293958}
+.logo{font-size:clamp(24px,6vw,34px);font-weight:900;letter-spacing:1px;background:linear-gradient(90deg,var(--blue),var(--purple));color:transparent;background-clip:text}.tag{font-size:11px;letter-spacing:3px;color:var(--muted)}
+main{max-width:760px;margin:auto;padding:18px 13px 40px}.panel{background:linear-gradient(160deg,#172441,#11182b);border:1px solid #2c3c60;border-radius:20px;padding:17px;box-shadow:0 12px 35px #0005}
+h1{font-size:23px;margin:0 0 6px}.muted{color:var(--muted);font-size:14px;line-height:1.5}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.badge{padding:6px 10px;border-radius:20px;background:#302658;color:#d6c7ff;font-size:12px}
+.scorebar{display:flex;gap:9px;margin:14px 0}.score{flex:1;background:#0b1428;border:1px solid #2a3a5c;padding:10px;border-radius:12px;text-align:center;font-size:13px;color:var(--muted)}.score b{display:block;font-size:18px;color:white}
+.board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:17px auto;width:100%;max-width:440px;min-width:0}.cell{min-width:0;overflow:hidden;font-size:clamp(12px,3.2vw,22px);padding:2px}
+.cell{aspect-ratio:1;border-radius:12px;background:#0c1427;border:1px solid #344566;display:flex;align-items:center;justify-content:center;position:relative;font-size:22px}
+.cell.path{background:#1b2946}.cell.finish{background:#392e63;border-color:#9276ed}
+.token{width:27px;height:27px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 9px #0008}.red{background:#ff526f}.blue{background:#3ecbff}
+.controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:13px}
+button{border:0;border-radius:12px;padding:12px 17px;font-weight:800;font-size:14px;cursor:pointer;background:linear-gradient(90deg,var(--blue),#9a80ff);color:#07101e}
+button.secondary{background:#253451;color:#fff;border:1px solid #405578}
+button:disabled{opacity:.45;cursor:not-allowed}
+.die{font-size:38px;text-align:center;margin:10px auto;color:white;background:#0a1327;border:1px solid #344766;border-radius:15px;width:76px;padding:5px}
+.message{text-align:center;min-height:25px;margin:12px 0;color:#d5e1f8}
+.note{font-size:12px;color:#aab6d0;line-height:1.5;margin-top:15px;background:#0c1528;border:1px solid #2b3b5b;border-radius:12px;padding:12px}
+footer{text-align:center;color:#7887a6;font-size:12px;padding:22px}
+@media(max-width:420px){.board{gap:5px}.cell{border-radius:8px}.token{width:23px;height:23px}}
+</style>
+</head>
+<body>
+<header><div class="logo">MY GAME ZONE</div><div class="tag">PLAY • THINK • LEVEL UP</div></header>
+<main>
+<section class="panel">
+<div class="row"><h1>🎲 Ludo Mini Race</h1><span class="badge">FREE PRACTICE</span></div>
+<p class="muted">दो खिलाड़ी बारी-बारी से पासा फेंकें। गोटी शुरू करने के लिए 6 चाहिए। अपनी गोटी को 20 कदम आगे Finish तक पहुँचाओ।</p>
+<div class="scorebar">
+<div class="score">🔴 Player 1 <b id="redpos">Start</b></div>
+<div class="score">🔵 Player 2 <b id="bluepos">Start</b></div>
+</div>
+<div class="row"><strong id="turn">🔴 Player 1 की बारी</strong><span class="badge" id="status">पहले पासा फेंको</span></div>
+<div class="die" id="die">🎲</div>
+<div class="board" id="board" aria-label="Ludo race board"></div>
+<div class="controls">
+<button id="roll">🎲 पासा फेंको</button>
+<button id="move" disabled>गोटी चलाओ</button>
+<button class="secondary" id="reset">नया गेम</button>
+</div>
+<div class="message" id="message" aria-live="polite">Player 1, पासा फेंको। 6 आने पर गोटी बाहर आएगी।</div>
+<div class="note">यह सीखने और मनोरंजन के लिए छोटा Ludo-style demo है, पूरा पारंपरिक Ludo नहीं। Points/जीत का कोई नकद मूल्य नहीं है; इसमें पैसे जमा या निकालने की सुविधा नहीं है।</div>
+</section>
+<footer>© My Game Zone</footer>
+</main>
+<script>
+const total=20;let pos=[-1,-1],turn=0,roll=null,done=false;
+const board=document.getElementById('board');
+function render(){
+ board.innerHTML='';
+ for(let i=0;i<=total;i++){
+  const cell=document.createElement('div');cell.className='cell '+(i===total?'finish':'path');
+  cell.textContent=i===total?'🏁':(i===0?'START':i);
+  if(pos[0]===i&&i<total){const t=document.createElement('span');t.className='token red';t.title='Player 1';cell.appendChild(t)}
+  if(pos[1]===i&&i<total){const t=document.createElement('span');t.className='token blue';t.title='Player 2';cell.appendChild(t)}
+  if(pos[0]===total&&i===total){const t=document.createElement('span');t.className='token red';cell.appendChild(t)}
+  if(pos[1]===total&&i===total){const t=document.createElement('span');t.className='token blue';cell.appendChild(t)}
+  board.appendChild(cell);
+ }
+ document.getElementById('redpos').textContent=pos[0]<0?'Start':pos[0]+'/20';
+ document.getElementById('bluepos').textContent=pos[1]<0?'Start':pos[1]+'/20';
+ document.getElementById('turn').textContent=turn===0?'🔴 Player 1 की बारी':'🔵 Player 2 की बारी';
+ document.getElementById('roll').disabled=done||roll!==null;
+ document.getElementById('move').disabled=done||roll===null;
+}
+function next(){turn=1-turn;roll=null;render()}
+document.getElementById('roll').onclick=()=>{
+ if(done||roll!==null)return;
+ roll=Math.floor(Math.random()*6)+1;
+ document.getElementById('die').textContent=['','⚀','⚁','⚂','⚃','⚄','⚅'][roll];
+ document.getElementById('status').textContent='आया: '+roll;
+ if(pos[turn]===-1&&roll!==6){
+  document.getElementById('message').textContent='6 नहीं आया। अब दूसरे खिलाड़ी की बारी।';
+  setTimeout(()=>{if(!done&&roll!==null)next()},900);
+ }else document.getElementById('message').textContent=roll===6?'6 आया! गोटी बाहर निकालो।':'अब गोटी चलाओ।';
+ render();
+};
+document.getElementById('move').onclick=()=>{
+ if(done||roll===null)return;
+ if(pos[turn]===-1)pos[turn]=0;else pos[turn]=Math.min(total,pos[turn]+roll);
+ if(pos[turn]>=total){
+  pos[turn]=total;done=true;
+  document.getElementById('message').textContent=(turn===0?'🔴 Player 1':'🔵 Player 2')+' जीत गया! 🎉';
+  document.getElementById('status').textContent='Winner!';
+  roll=null;render();return;
+ }
+ document.getElementById('message').textContent='चाल पूरी हुई। अब अगले खिलाड़ी की बारी।';
+ next();
+};
+document.getElementById('reset').onclick=()=>{
+ pos=[-1,-1];turn=0;roll=null;done=false;
+ document.getElementById('die').textContent='🎲';
+ document.getElementById('status').textContent='पहले पासा फेंको';
+ document.getElementById('message').textContent='नया गेम शुरू! Player 1 पासा फेंको।';
+ render();
+};
+render();
+</script>
+</body></html>
